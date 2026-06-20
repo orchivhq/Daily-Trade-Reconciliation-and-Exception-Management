@@ -25,13 +25,13 @@
       "typeVersion": 1.3,
       "position": [
         240,
-        592
+        720
       ]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "<__PLACEHOLDER_VALUE__SELECT * FROM trades WHERE trade_date = CAST(GETDATE() AS DATE)__>",
+        "query": "SELECT TradeID, Account, SecurityID, TradeDate, SettlementDate, Quantity, Price, NetAmount FROM dbo.TradeTransactions WHERE TradeDate = CAST(DATEADD(day, -1, GETDATE()) AS DATE)",
         "options": {}
       },
       "id": "f21d3820-3842-4200-b854-3deab030bb55",
@@ -40,8 +40,9 @@
       "typeVersion": 1.1,
       "position": [
         688,
-        496
-      ]
+        592
+      ],
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
@@ -49,50 +50,62 @@
           "assignments": [
             {
               "id": "1",
-              "name": "recon_key",
-              "value": "={{ $json.trade_id }}_{{ $json.trade_date }}_{{ $json.symbol }}",
+              "name": "TradeID",
+              "value": "={{ String($json.TradeID).trim().toUpperCase() }}",
               "type": "string"
             },
             {
               "id": "2",
-              "name": "trade_id",
-              "value": "={{ $json.trade_id }}",
+              "name": "Account",
+              "value": "={{ String($json.Account).trim().toUpperCase() }}",
               "type": "string"
             },
             {
               "id": "3",
-              "name": "trade_date",
-              "value": "={{ $json.trade_date }}",
+              "name": "SecurityID",
+              "value": "={{ String($json.SecurityID).trim().toUpperCase() }}",
               "type": "string"
             },
             {
               "id": "4",
-              "name": "symbol",
-              "value": "={{ $json.symbol }}",
+              "name": "TradeDate",
+              "value": "={{ $now.fromISO($json.TradeDate).toFormat(\"yyyy-MM-dd\") }}",
               "type": "string"
             },
             {
               "id": "5",
-              "name": "quantity",
-              "value": "={{ Number($json.quantity) }}",
-              "type": "number"
+              "name": "SettlementDate",
+              "value": "={{ $now.fromISO($json.SettlementDate).toFormat(\"yyyy-MM-dd\") }}",
+              "type": "string"
             },
             {
               "id": "6",
-              "name": "price",
-              "value": "={{ Number($json.price) }}",
+              "name": "Quantity",
+              "value": "={{ Number($json.Quantity) }}",
               "type": "number"
             },
             {
               "id": "7",
-              "name": "counterparty",
-              "value": "={{ $json.counterparty }}",
-              "type": "string"
+              "name": "Price",
+              "value": "={{ Number($json.Price) }}",
+              "type": "number"
             },
             {
               "id": "8",
-              "name": "source",
-              "value": "SQL",
+              "name": "NetAmount",
+              "value": "={{ Number($json.NetAmount) }}",
+              "type": "number"
+            },
+            {
+              "id": "9",
+              "name": "SourceSystem",
+              "value": "SQL_SERVER",
+              "type": "string"
+            },
+            {
+              "id": "10",
+              "name": "ReconciliationKey",
+              "value": "={{ String($json.TradeID).trim().toUpperCase() + \"_\" + String($json.Account).trim().toUpperCase() + \"_\" + String($json.SecurityID).trim().toUpperCase() + \"_\" + $now.fromISO($json.TradeDate).toFormat(\"yyyy-MM-dd\") }}",
               "type": "string"
             }
           ]
@@ -105,7 +118,7 @@
       "typeVersion": 3.4,
       "position": [
         912,
-        496
+        592
       ]
     },
     {
@@ -120,7 +133,7 @@
           },
           "conditions": [
             {
-              "leftValue": "={{ $json.trade_id }}",
+              "leftValue": "={{ $json.TradeID }}",
               "rightValue": "",
               "operator": {
                 "type": "string",
@@ -128,10 +141,50 @@
               }
             },
             {
-              "leftValue": "={{ $json.symbol }}",
+              "leftValue": "={{ $json.Account }}",
               "rightValue": "",
               "operator": {
                 "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "leftValue": "={{ $json.SecurityID }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "leftValue": "={{ $json.TradeDate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "leftValue": "={{ $json.Quantity }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "leftValue": "={{ $json.Price }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "leftValue": "={{ $json.NetAmount }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
                 "operation": "notEmpty"
               }
             }
@@ -145,36 +198,15 @@
       "typeVersion": 2.3,
       "position": [
         1136,
-        496
+        592
       ]
     },
     {
       "parameters": {
-        "mergeByFields": {
-          "values": [
-            {
-              "field1": "recon_key",
-              "field2": "recon_key"
-            }
-          ]
-        },
+        "fileSelector": "={{ \"/data/trades/Trade_File_\" + $now.minus({ days: 1 }).toFormat(\"yyyyMMdd\") + \".xlsx\" }}",
         "options": {
-          "skipFields": "source"
+          "dataPropertyName": "data"
         }
-      },
-      "id": "fc97ef09-591c-4ef3-aae4-6192b11349d1",
-      "name": "Compare SQL vs Excel",
-      "type": "n8n-nodes-base.compareDatasets",
-      "typeVersion": 2.3,
-      "position": [
-        1360,
-        560
-      ]
-    },
-    {
-      "parameters": {
-        "fileSelector": "<__PLACEHOLDER_VALUE__/data/trades/daily_trades_*.xlsx__>",
-        "options": {}
       },
       "id": "56af2f3e-4716-4b2b-80ce-b4ac1c188274",
       "name": "Read Excel File",
@@ -182,16 +214,18 @@
       "typeVersion": 1.1,
       "position": [
         464,
-        688
+        976
       ],
-      "executeOnce": true
+      "executeOnce": true,
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
         "operation": "xlsx",
         "options": {
           "headerRow": true,
-          "includeEmptyCells": false
+          "includeEmptyCells": false,
+          "sheetName": "Trades"
         }
       },
       "id": "d1e1d8bc-48be-4392-8787-ff5b87a00a71",
@@ -200,7 +234,7 @@
       "typeVersion": 1.1,
       "position": [
         688,
-        688
+        976
       ]
     },
     {
@@ -209,50 +243,62 @@
           "assignments": [
             {
               "id": "1",
-              "name": "recon_key",
-              "value": "={{ $json.TradeID }}_{{ $json.TradeDate }}_{{ $json.Symbol }}",
+              "name": "TradeID",
+              "value": "={{ String($json[\"Trade ID\"] || $json.TradeID || $json.TRADE_ID || \"\").trim().toUpperCase() }}",
               "type": "string"
             },
             {
               "id": "2",
-              "name": "trade_id",
-              "value": "={{ $json.TradeID }}",
+              "name": "Account",
+              "value": "={{ String($json.Acct || $json.Account || \"\").trim().toUpperCase() }}",
               "type": "string"
             },
             {
               "id": "3",
-              "name": "trade_date",
-              "value": "={{ $json.TradeDate }}",
+              "name": "SecurityID",
+              "value": "={{ String($json[\"Security ID\"] || $json.SecurityID || $json.ISIN || $json.CUSIP || \"\").trim().toUpperCase() }}",
               "type": "string"
             },
             {
               "id": "4",
-              "name": "symbol",
-              "value": "={{ $json.Symbol }}",
+              "name": "TradeDate",
+              "value": "={{ typeof $json.TradeDate === \"number\" ? $now.fromMillis(($json.TradeDate - 25569) * 86400 * 1000).toFormat(\"yyyy-MM-dd\") : $now.fromISO($json.TradeDate).toFormat(\"yyyy-MM-dd\") }}",
               "type": "string"
             },
             {
               "id": "5",
-              "name": "quantity",
-              "value": "={{ Number($json.Quantity) }}",
-              "type": "number"
+              "name": "SettlementDate",
+              "value": "={{ typeof $json.SettlementDate === \"number\" ? $now.fromMillis(($json.SettlementDate - 25569) * 86400 * 1000).toFormat(\"yyyy-MM-dd\") : $now.fromISO($json.SettlementDate).toFormat(\"yyyy-MM-dd\") }}",
+              "type": "string"
             },
             {
               "id": "6",
-              "name": "price",
-              "value": "={{ Number($json.Price) }}",
+              "name": "Quantity",
+              "value": "={{ Number(String($json.Qty || $json.Quantity || \"0\").replace(/,/g, \"\")) }}",
               "type": "number"
             },
             {
               "id": "7",
-              "name": "counterparty",
-              "value": "={{ $json.Counterparty }}",
-              "type": "string"
+              "name": "Price",
+              "value": "={{ Number(String($json[\"Trade Price\"] || $json.Price || \"0\").replace(/,/g, \"\")) }}",
+              "type": "number"
             },
             {
               "id": "8",
-              "name": "source",
-              "value": "Excel",
+              "name": "NetAmount",
+              "value": "={{ Number(String($json[\"Net Amount\"] || $json.Amount || $json.NET_AMOUNT || \"0\").replace(/,/g, \"\")) }}",
+              "type": "number"
+            },
+            {
+              "id": "9",
+              "name": "SourceSystem",
+              "value": "EXCEL",
+              "type": "string"
+            },
+            {
+              "id": "10",
+              "name": "ReconciliationKey",
+              "value": "={{ String($json[\"Trade ID\"] || $json.TradeID || $json.TRADE_ID || \"\").trim().toUpperCase() + \"_\" + String($json.Acct || $json.Account || \"\").trim().toUpperCase() + \"_\" + String($json[\"Security ID\"] || $json.SecurityID || $json.ISIN || $json.CUSIP || \"\").trim().toUpperCase() + \"_\" + (typeof $json.TradeDate === \"number\" ? $now.fromMillis(($json.TradeDate - 25569) * 86400 * 1000).toFormat(\"yyyy-MM-dd\") : $now.fromISO($json.TradeDate).toFormat(\"yyyy-MM-dd\")) }}",
               "type": "string"
             }
           ]
@@ -265,7 +311,7 @@
       "typeVersion": 3.4,
       "position": [
         912,
-        688
+        976
       ]
     },
     {
@@ -280,7 +326,7 @@
           },
           "conditions": [
             {
-              "leftValue": "={{ $json.trade_id }}",
+              "leftValue": "={{ $json.TradeID }}",
               "rightValue": "",
               "operator": {
                 "type": "string",
@@ -288,10 +334,50 @@
               }
             },
             {
-              "leftValue": "={{ $json.symbol }}",
+              "leftValue": "={{ $json.Account }}",
               "rightValue": "",
               "operator": {
                 "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "leftValue": "={{ $json.SecurityID }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "leftValue": "={{ $json.TradeDate }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "leftValue": "={{ $json.Quantity }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "leftValue": "={{ $json.Price }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "leftValue": "={{ $json.NetAmount }}",
+              "rightValue": "",
+              "operator": {
+                "type": "number",
                 "operation": "notEmpty"
               }
             }
@@ -305,88 +391,7 @@
       "typeVersion": 2.3,
       "position": [
         1136,
-        688
-      ]
-    },
-    {
-      "parameters": {
-        "compare": "selectedFields",
-        "fieldsToCompare": "recon_key",
-        "options": {}
-      },
-      "id": "8e4d2890-b5ab-42de-99a1-6dd1d4bc6d47",
-      "name": "Identify Duplicates",
-      "type": "n8n-nodes-base.removeDuplicates",
-      "typeVersion": 1.1,
-      "position": [
-        1584,
-        592
-      ]
-    },
-    {
-      "parameters": {
-        "assignments": {
-          "assignments": [
-            {
-              "id": "1",
-              "name": "exception_type",
-              "value": "={{ $json._merge === \"input1\" ? \"Missing in Excel\" : ($json._merge === \"input2\" ? \"Missing in SQL\" : \"Field Mismatch\") }}",
-              "type": "string"
-            },
-            {
-              "id": "2",
-              "name": "severity",
-              "value": "={{ $json._merge === \"both\" ? \"Low\" : \"High\" }}",
-              "type": "string"
-            },
-            {
-              "id": "3",
-              "name": "recon_key",
-              "value": "={{ $json.recon_key }}",
-              "type": "string"
-            },
-            {
-              "id": "4",
-              "name": "trade_id",
-              "value": "={{ $json.trade_id }}",
-              "type": "string"
-            },
-            {
-              "id": "5",
-              "name": "symbol",
-              "value": "={{ $json.symbol }}",
-              "type": "string"
-            },
-            {
-              "id": "6",
-              "name": "quantity",
-              "value": "={{ $json.quantity }}",
-              "type": "number"
-            },
-            {
-              "id": "7",
-              "name": "price",
-              "value": "={{ $json.price }}",
-              "type": "number"
-            },
-            {
-              "id": "8",
-              "name": "source",
-              "value": "={{ $json.source }}",
-              "type": "string"
-            }
-          ]
-        },
-        "includeOtherFields": true,
-        "options": {}
-      },
-      "id": "a4971892-b969-4bbc-9941-4062b40db9d8",
-      "name": "Classify Exceptions",
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        1808,
-        592
+        976
       ]
     },
     {
@@ -394,11 +399,11 @@
         "sortFieldsUi": {
           "sortField": [
             {
-              "fieldName": "severity",
+              "fieldName": "Severity",
               "order": "descending"
             },
             {
-              "fieldName": "recon_key"
+              "fieldName": "TradeID"
             }
           ]
         },
@@ -409,15 +414,15 @@
       "type": "n8n-nodes-base.sort",
       "typeVersion": 1,
       "position": [
-        2032,
-        592
+        2256,
+        736
       ]
     },
     {
       "parameters": {
         "operation": "xlsx",
         "options": {
-          "fileName": "=Trade_Exceptions_{{ $now.toFormat(\"yyyy-MM-dd\") }}.xlsx",
+          "fileName": "={{ \"Reconciliation_Exception_Report_\" + $now.minus({ days: 1 }).toFormat(\"yyyyMMdd\") + \".xlsx\" }}",
           "headerRow": true,
           "sheetName": "Exceptions"
         }
@@ -428,13 +433,13 @@
       "typeVersion": 1.1,
       "position": [
         2480,
-        496
+        544
       ]
     },
     {
       "parameters": {
         "operation": "write",
-        "fileName": "={{ \"/data/reports/Trade_Exceptions_\" + $now.toFormat(\"yyyy-MM-dd\") + \".xlsx\" }}",
+        "fileName": "={{ \"/data/reports/Reconciliation_Exception_Report_\" + $now.minus({ days: 1 }).toFormat(\"yyyyMMdd\") + \".xlsx\" }}",
         "options": {}
       },
       "id": "75c7d603-b982-403f-8348-b4f571fe4604",
@@ -443,7 +448,7 @@
       "typeVersion": 1.1,
       "position": [
         2704,
-        496
+        544
       ]
     },
     {
@@ -458,7 +463,7 @@
       "typeVersion": 3.2,
       "position": [
         2928,
-        736
+        592
       ]
     },
     {
@@ -472,33 +477,33 @@
       "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
       "position": [
-        2256,
-        784
+        2480,
+        832
       ],
       "executeOnce": true
     },
     {
       "parameters": {
-        "jsCode": "const exceptions = $input.first().json.exceptions || [];\nconst totalTrades = exceptions.length;\nconst matched = exceptions.filter(e => e.exception_type === \"Field Mismatch\").length;\nconst unmatched = totalTrades - matched;\nconst highSeverity = exceptions.filter(e => e.severity === \"High\").length;\nconst lowSeverity = exceptions.filter(e => e.severity === \"Low\").length;\n\nreturn [{\n  json: {\n    total_trades: totalTrades,\n    matched_trades: matched,\n    unmatched_trades: unmatched,\n    high_severity_count: highSeverity,\n    low_severity_count: lowSeverity,\n    run_date: new Date().toISOString().split(\"T\")[0]\n  }\n}];"
+        "jsCode": "const exceptions = $input.first().json.exceptions || [];\nconst totalExceptions = exceptions.length;\nconst highSeverity = exceptions.filter(e => e.Severity === \"High\").length;\nconst mediumSeverity = exceptions.filter(e => e.Severity === \"Medium\").length;\nconst lowSeverity = exceptions.filter(e => e.Severity === \"Low\").length;\nconst missingInSQL = exceptions.filter(e => e.ExceptionType === \"MISSING_IN_SQL_SERVER\").length;\nconst missingInExcel = exceptions.filter(e => e.ExceptionType === \"MISSING_IN_EXCEL\").length;\nconst quantityMismatch = exceptions.filter(e => e.ExceptionType === \"QUANTITY_MISMATCH\").length;\nconst priceMismatch = exceptions.filter(e => e.ExceptionType === \"PRICE_MISMATCH\").length;\nconst netAmountMismatch = exceptions.filter(e => e.ExceptionType === \"NET_AMOUNT_MISMATCH\").length;\nconst duplicateCount = exceptions.filter(e => e.ExceptionType === \"DUPLICATE_TRADE\").length;\nconst invalidSQL = exceptions.filter(e => e.ExceptionType === \"INVALID_SQL_RECORD\").length;\nconst invalidExcel = exceptions.filter(e => e.ExceptionType === \"INVALID_EXCEL_RECORD\").length;\nconst runDate = new Date().toISOString().split(\"T\")[0];\nconst tradeDate = new Date(Date.now() - 86400000).toISOString().split(\"T\")[0];\n\nconst validSQLCount = $(\"Filter Valid SQL Records\").all().length;\nconst validExcelCount = $(\"Filter Valid Excel Records\").all().length;\nconst totalTradesReviewed = validSQLCount + validExcelCount;\n\nconst unmatchedTrades = missingInSQL + missingInExcel;\nconst mismatchCount = quantityMismatch + priceMismatch + netAmountMismatch;\nconst matchedTrades = Math.max(0, totalTradesReviewed - totalExceptions);\nconst status = totalExceptions === 0 ? \"Completed Successfully\" : \"Completed With Exceptions\";\nconst reportPath = \"/data/reports/Reconciliation_Exception_Report_\" + tradeDate.replace(/-/g, \"\") + \".xlsx\";\n\nreturn [{\n  json: {\n    ReconciliationDate: runDate,\n    TradeDate: tradeDate,\n    TotalTradesReviewed: totalTradesReviewed,\n    MatchedTrades: matchedTrades,\n    UnmatchedTrades: unmatchedTrades,\n    MismatchCount: mismatchCount,\n    DuplicateCount: duplicateCount,\n    TotalExceptions: totalExceptions,\n    HighSeverityExceptions: highSeverity,\n    MediumSeverityExceptions: mediumSeverity,\n    LowSeverityExceptions: lowSeverity,\n    Status: status,\n    ReportPath: reportPath\n  }\n}];"
       },
       "id": "5d94be77-972a-4029-a380-1ab2437f5fa7",
       "name": "Calculate Summary Metrics",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2480,
-        784
+        2704,
+        832
       ]
     },
     {
       "parameters": {
         "method": "POST",
-        "url": "<__PLACEHOLDER_VALUE__https://api.powerbi.com/v1.0/myorg/datasets/{dataset-id}/rows?key={api-key}__>",
+        "url": "<__PLACEHOLDER_VALUE__https://api.powerbi.com/v1.0/myorg/groups/{workspace-id}/datasets/{dataset-id}/tables/TradeReconciliationSummary/rows__>",
         "authentication": "genericCredentialType",
         "genericAuthType": "httpBearerAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { \"rows\": [{ \"run_date\": $json.run_date, \"total_trades\": $json.total_trades, \"matched\": $json.matched_trades, \"unmatched\": $json.unmatched_trades, \"high_severity\": $json.high_severity_count }] } }}",
+        "jsonBody": "={{ { \"rows\": [{ \"ReconciliationDate\": $json.ReconciliationDate, \"TradeDate\": $json.TradeDate, \"TotalTradesReviewed\": $json.TotalTradesReviewed, \"MatchedTrades\": $json.MatchedTrades, \"UnmatchedTrades\": $json.UnmatchedTrades, \"MismatchCount\": $json.MismatchCount, \"DuplicateCount\": $json.DuplicateCount, \"TotalExceptions\": $json.TotalExceptions, \"HighSeverityExceptions\": $json.HighSeverityExceptions, \"MediumSeverityExceptions\": $json.MediumSeverityExceptions, \"LowSeverityExceptions\": $json.LowSeverityExceptions, \"Status\": $json.Status }] } }}",
         "options": {}
       },
       "id": "5d491065-233c-4d7d-851e-dd9e27044e32",
@@ -506,16 +511,17 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        2704,
-        784
-      ]
+        2928,
+        976
+      ],
+      "onError": "continueErrorOutput"
     },
     {
       "parameters": {
         "fromEmail": "<__PLACEHOLDER_VALUE__reconciliation@company.com__>",
         "toEmail": "<__PLACEHOLDER_VALUE__operations-team@company.com__>",
-        "subject": "={{ \"Daily Trade Reconciliation - \" + $now.toFormat(\"MMMM d, yyyy\") }}",
-        "html": "={{ \"<h2>Daily Trade Reconciliation Summary</h2>\" +\n\"<p><strong>Run Date:</strong> \" + $(\"Calculate Summary Metrics\").item.json.run_date + \"</p>\" +\n\"<p><strong>Total Trades Reviewed:</strong> \" + $(\"Calculate Summary Metrics\").item.json.total_trades + \"</p>\" +\n\"<p><strong>Matched Trades:</strong> \" + $(\"Calculate Summary Metrics\").item.json.matched_trades + \"</p>\" +\n\"<p><strong>Unmatched Trades:</strong> \" + $(\"Calculate Summary Metrics\").item.json.unmatched_trades + \"</p>\" +\n\"<p><strong>High Severity Exceptions:</strong> \" + $(\"Calculate Summary Metrics\").item.json.high_severity_count + \"</p>\" +\n\"<p><strong>Low Severity Exceptions:</strong> \" + $(\"Calculate Summary Metrics\").item.json.low_severity_count + \"</p>\" +\n\"<p>Please review the attached exception report for details.</p>\" }}",
+        "subject": "={{ \"Daily Trade Reconciliation Summary - \" + $json.TradeDate }}",
+        "html": "={{ \"<h2>Daily Trade Reconciliation Summary</h2>\" + \"<p><strong>Trade Date:</strong> \" + $json.TradeDate + \"</p>\" + \"<p><strong>Total Records Reviewed:</strong> \" + $json.TotalTradesReviewed + \"</p>\" + \"<p><strong>Matched Trades:</strong> \" + $json.MatchedTrades + \"</p>\" + \"<p><strong>Total Exceptions:</strong> \" + $json.TotalExceptions + \"</p>\" + \"<p><strong>High Severity Exceptions:</strong> \" + $json.HighSeverityExceptions + \"</p>\" + \"<p><strong>Duplicate Trades:</strong> \" + $json.DuplicateCount + \"</p>\" + \"<hr>\" + \"<p><strong>Exception Report:</strong> \" + $json.ReportPath + \"</p>\" + \"<p><a href=\\\"\" + placeholder(\"https://app.powerbi.com/groups/{workspace-id}/dashboards/{dashboard-id}\") + \"\\\">View Power BI Dashboard</a></p>\" + \"<p>Status: \" + $json.Status + \"</p>\" }}",
         "options": {
           "fileAttachments": "data"
         }
@@ -526,14 +532,14 @@
       "typeVersion": 2.1,
       "position": [
         3152,
-        736
+        592
       ],
       "webhookId": "9fa96f7c-32ae-4670-ba79-a42e45e78b7e"
     },
     {
       "parameters": {
-        "table": "reconciliation_logs",
-        "columns": "run_date,status,records_processed,exceptions_found,high_severity_count"
+        "table": "dbo.TradeReconciliationExecutionLog",
+        "columns": "RunDate,TradeDate,Status,RecordsProcessed,ExceptionsFound,HighSeverityExceptions,ReportPath,ErrorDetails,CreatedAt"
       },
       "id": "bbbd9283-f618-427c-93f2-0c498a6dd553",
       "name": "Log Execution to Database",
@@ -541,14 +547,27 @@
       "typeVersion": 1.1,
       "position": [
         3376,
-        688
+        592
       ],
       "executeOnce": true
     },
     {
       "parameters": {
+        "jsCode": "const exceptions = [];\n\nfor (const item of $input.all()) {\n  if (item.json.ExceptionType) {\n    exceptions.push(item.json);\n  }\n}\n\nreturn exceptions.map(e => ({ json: e }));"
+      },
+      "id": "75028ebd-54db-4813-8c88-b601e68ff62a",
+      "name": "Classify Exceptions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2032,
+        736
+      ]
+    },
+    {
+      "parameters": {
         "conditions": {
-          "combinator": "or",
+          "combinator": "and",
           "options": {
             "caseSensitive": true,
             "leftValue": "",
@@ -557,44 +576,102 @@
           },
           "conditions": [
             {
-              "leftValue": "={{ $json.fileName }}",
-              "rightValue": "",
+              "leftValue": "={{ $json.HighSeverityExceptions }}",
+              "rightValue": 0,
               "operator": {
-                "type": "string",
-                "operation": "isEmpty"
+                "type": "number",
+                "operation": "gt"
               }
             }
           ]
         },
         "options": {}
       },
-      "id": "c2143505-1b0d-427e-a39c-28336a83c072",
+      "id": "7c25eb0d-8530-4edf-9826-7799e51c6459",
       "name": "Check for Critical Errors",
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
         3152,
-        432
-      ],
-      "onError": "continueErrorOutput"
+        832
+      ]
     },
     {
       "parameters": {
         "fromEmail": "<__PLACEHOLDER_VALUE__reconciliation@company.com__>",
         "toEmail": "<__PLACEHOLDER_VALUE__workflow-owner@company.com__>",
-        "subject": "={{ \"CRITICAL: Trade Reconciliation Workflow Failed - \" + $now.toFormat(\"MMMM d, yyyy\") }}",
-        "html": "={{ \"<h2>Trade Reconciliation Workflow Error</h2>\" +\n\"<p><strong>Error Time:</strong> \" + $now.toISO() + \"</p>\" +\n\"<p><strong>Error Details:</strong> Critical error occurred during reconciliation process. File save may have failed.</p>\" +\n\"<p>Please investigate and resolve the issue immediately.</p>\" }}",
+        "subject": "={{ \"High Severity Trade Reconciliation Exceptions - \" + $json.TradeDate }}",
+        "html": "={{ \"<h2>High Severity Trade Reconciliation Exceptions</h2>\" + \"<p><strong>Trade Date:</strong> \" + $json.TradeDate + \"</p>\" + \"<p><strong>Total Exceptions:</strong> \" + $json.TotalExceptions + \"</p>\" + \"<p><strong>High Severity Exceptions:</strong> \" + $json.HighSeverityExceptions + \"</p>\" + \"<p><strong>Exception Report:</strong> \" + $json.ReportPath + \"</p>\" + \"<p><a href=\\\"\" + placeholder(\"https://app.powerbi.com/groups/{workspace-id}/dashboards/{dashboard-id}\") + \"\\\">View Power BI Dashboard</a></p>\" + \"<p>Please review and take action on high severity exceptions.</p>\" }}",
         "options": {}
       },
-      "id": "a811b17a-d891-436d-8e4f-9375ed25af6a",
-      "name": "Send Error Alert",
+      "id": "a4beddc1-d1b2-4477-a57d-0f9f0ac5fd6b",
+      "name": "Send High Severity Alert",
       "type": "n8n-nodes-base.emailSend",
       "typeVersion": 2.1,
       "position": [
         3376,
-        400
+        880
       ],
-      "webhookId": "328f7141-8c8b-4e0a-9356-4a80358504d0"
+      "webhookId": "76f54e22-1c2c-41e2-be4c-dfb72e5b1fbf"
+    },
+    {
+      "parameters": {
+        "jsCode": "const allRecords = $input.all();\nconst duplicateMap = new Map();\nconst duplicates = [];\nconst reconDate = new Date().toISOString().split(\"T\")[0];\n\nfor (const item of allRecords) {\n  const key = item.json.ReconciliationKey + \"|\" + item.json.SourceSystem;\n  if (duplicateMap.has(key)) {\n    duplicateMap.set(key, duplicateMap.get(key) + 1);\n  } else {\n    duplicateMap.set(key, 1);\n  }\n}\n\nfor (const item of allRecords) {\n  const key = item.json.ReconciliationKey + \"|\" + item.json.SourceSystem;\n  if (duplicateMap.get(key) > 1) {\n    duplicates.push({\n      ReconciliationDate: reconDate,\n      TradeDate: item.json.TradeDate,\n      TradeID: item.json.TradeID,\n      Account: item.json.Account,\n      SecurityID: item.json.SecurityID,\n      SourceSystem: item.json.SourceSystem,\n      ExceptionType: \"DUPLICATE_TRADE\",\n      SQLServerValue: item.json.SourceSystem === \"SQL_SERVER\" ? `Q:${item.json.Quantity} P:${item.json.Price} N:${item.json.NetAmount}` : \"N/A\",\n      ExcelValue: item.json.SourceSystem === \"EXCEL\" ? `Q:${item.json.Quantity} P:${item.json.Price} N:${item.json.NetAmount}` : \"N/A\",\n      Difference: \"Duplicate\",\n      Severity: \"Medium\",\n      Status: \"Open\"\n    });\n  }\n}\n\nreturn duplicates.map(d => ({ json: d }));"
+      },
+      "id": "641e73f0-0065-4a73-9210-6e1a954e3f18",
+      "name": "Identify Duplicates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        832
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "cf65c963-00a6-4d4b-b09a-bc95458ef823",
+      "name": "Merge Comparison and Duplicates",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1808,
+        736
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const sqlRecords = $input.all().filter(item => item.json.SourceSystem === \"SQL_SERVER\");\nconst excelRecords = $input.all().filter(item => item.json.SourceSystem === \"EXCEL\");\nconst exceptions = [];\nconst reconDate = new Date().toISOString().split(\"T\")[0];\nconst QUANTITY_TOLERANCE = 0.0001;\nconst PRICE_TOLERANCE = 0.000001;\nconst NET_AMOUNT_TOLERANCE = 0.01;\nconst HIGH_NET_AMOUNT_THRESHOLD = 10000;\n\nconst sqlMap = new Map();\nfor (const item of sqlRecords) {\n  sqlMap.set(item.json.ReconciliationKey, item.json);\n}\n\nconst excelMap = new Map();\nfor (const item of excelRecords) {\n  excelMap.set(item.json.ReconciliationKey, item.json);\n}\n\nfor (const [key, sqlRec] of sqlMap) {\n  if (!excelMap.has(key)) {\n    exceptions.push({\n      ReconciliationDate: reconDate,\n      TradeDate: sqlRec.TradeDate,\n      TradeID: sqlRec.TradeID,\n      Account: sqlRec.Account,\n      SecurityID: sqlRec.SecurityID,\n      SourceSystem: \"SQL_SERVER\",\n      ExceptionType: \"MISSING_IN_EXCEL\",\n      SQLServerValue: `Q:${sqlRec.Quantity} P:${sqlRec.Price} N:${sqlRec.NetAmount}`,\n      ExcelValue: \"N/A\",\n      Difference: \"N/A\",\n      Severity: \"High\",\n      Status: \"Open\"\n    });\n  } else {\n    const excelRec = excelMap.get(key);\n    const qtyDiff = Math.abs(sqlRec.Quantity - excelRec.Quantity);\n    const priceDiff = Math.abs(sqlRec.Price - excelRec.Price);\n    const netDiff = Math.abs(sqlRec.NetAmount - excelRec.NetAmount);\n    \n    if (qtyDiff > QUANTITY_TOLERANCE) {\n      exceptions.push({\n        ReconciliationDate: reconDate,\n        TradeDate: sqlRec.TradeDate,\n        TradeID: sqlRec.TradeID,\n        Account: sqlRec.Account,\n        SecurityID: sqlRec.SecurityID,\n        SourceSystem: \"BOTH\",\n        ExceptionType: \"QUANTITY_MISMATCH\",\n        SQLServerValue: sqlRec.Quantity,\n        ExcelValue: excelRec.Quantity,\n        Difference: qtyDiff.toFixed(4),\n        Severity: \"High\",\n        Status: \"Open\"\n      });\n    }\n    \n    if (priceDiff > PRICE_TOLERANCE) {\n      exceptions.push({\n        ReconciliationDate: reconDate,\n        TradeDate: sqlRec.TradeDate,\n        TradeID: sqlRec.TradeID,\n        Account: sqlRec.Account,\n        SecurityID: sqlRec.SecurityID,\n        SourceSystem: \"BOTH\",\n        ExceptionType: \"PRICE_MISMATCH\",\n        SQLServerValue: sqlRec.Price,\n        ExcelValue: excelRec.Price,\n        Difference: priceDiff.toFixed(6),\n        Severity: \"Medium\",\n        Status: \"Open\"\n      });\n    }\n    \n    if (netDiff > NET_AMOUNT_TOLERANCE) {\n      const severity = netDiff > HIGH_NET_AMOUNT_THRESHOLD ? \"High\" : \"Medium\";\n      exceptions.push({\n        ReconciliationDate: reconDate,\n        TradeDate: sqlRec.TradeDate,\n        TradeID: sqlRec.TradeID,\n        Account: sqlRec.Account,\n        SecurityID: sqlRec.SecurityID,\n        SourceSystem: \"BOTH\",\n        ExceptionType: \"NET_AMOUNT_MISMATCH\",\n        SQLServerValue: sqlRec.NetAmount,\n        ExcelValue: excelRec.NetAmount,\n        Difference: netDiff.toFixed(2),\n        Severity: severity,\n        Status: \"Open\"\n      });\n    }\n  }\n}\n\nfor (const [key, excelRec] of excelMap) {\n  if (!sqlMap.has(key)) {\n    exceptions.push({\n      ReconciliationDate: reconDate,\n      TradeDate: excelRec.TradeDate,\n      TradeID: excelRec.TradeID,\n      Account: excelRec.Account,\n      SecurityID: excelRec.SecurityID,\n      SourceSystem: \"EXCEL\",\n      ExceptionType: \"MISSING_IN_SQL_SERVER\",\n      SQLServerValue: \"N/A\",\n      ExcelValue: `Q:${excelRec.Quantity} P:${excelRec.Price} N:${excelRec.NetAmount}`,\n      Difference: \"N/A\",\n      Severity: \"High\",\n      Status: \"Open\"\n    });\n  }\n}\n\nreturn exceptions.map(e => ({ json: e }));"
+      },
+      "id": "fce566c8-44cf-490a-b5a1-6f9e718253b2",
+      "name": "Compare SQL vs Excel",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1584,
+        640
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "8c77f6b1-7d3e-40e8-9662-75f009d18574",
+      "name": "Merge SQL and Excel for Comparison",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1360,
+        496
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "99da0397-cd05-4993-9d90-1b12f1448606",
+      "name": "Merge SQL and Excel for Duplicates",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1360,
+        816
+      ]
     }
   ],
   "pinData": {},
@@ -644,15 +721,14 @@
             "node": "Compare SQL vs Excel",
             "type": "main",
             "index": 0
-          }
-        ]
-      ]
-    },
-    "Compare SQL vs Excel": {
-      "main": [
-        [
+          },
           {
-            "node": "Identify Duplicates",
+            "node": "Merge SQL and Excel for Comparison",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge SQL and Excel for Duplicates",
             "type": "main",
             "index": 0
           }
@@ -698,29 +774,17 @@
           {
             "node": "Compare SQL vs Excel",
             "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge SQL and Excel for Comparison",
+            "type": "main",
             "index": 1
-          }
-        ]
-      ]
-    },
-    "Identify Duplicates": {
-      "main": [
-        [
+          },
           {
-            "node": "Classify Exceptions",
+            "node": "Merge SQL and Excel for Duplicates",
             "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Classify Exceptions": {
-      "main": [
-        [
-          {
-            "node": "Sort by Severity",
-            "type": "main",
-            "index": 0
+            "index": 1
           }
         ]
       ]
@@ -759,11 +823,6 @@
             "node": "Merge Report and Summary",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Check for Critical Errors",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
@@ -797,19 +856,23 @@
             "node": "Update Power BI Dataset",
             "type": "main",
             "index": 0
-          }
-        ]
-      ]
-    },
-    "Update Power BI Dataset": {
-      "main": [
-        [
+          },
+          {
+            "node": "Check for Critical Errors",
+            "type": "main",
+            "index": 0
+          },
           {
             "node": "Merge Report and Summary",
             "type": "main",
             "index": 1
           }
         ]
+      ]
+    },
+    "Update Power BI Dataset": {
+      "main": [
+        []
       ]
     },
     "Send Summary Email": {
@@ -823,11 +886,22 @@
         ]
       ]
     },
+    "Classify Exceptions": {
+      "main": [
+        [
+          {
+            "node": "Sort by Severity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Check for Critical Errors": {
       "main": [
         [
           {
-            "node": "Send Error Alert",
+            "node": "Send High Severity Alert",
             "type": "main",
             "index": 0
           }
@@ -835,6 +909,66 @@
         [
           {
             "node": "Log Execution to Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send High Severity Alert": {
+      "main": [
+        []
+      ]
+    },
+    "Identify Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Merge Comparison and Duplicates",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Comparison and Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Classify Exceptions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compare SQL vs Excel": {
+      "main": [
+        [
+          {
+            "node": "Merge Comparison and Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge SQL and Excel for Comparison": {
+      "main": [
+        [
+          {
+            "node": "Compare SQL vs Excel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge SQL and Excel for Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Identify Duplicates",
             "type": "main",
             "index": 0
           }
@@ -848,7 +982,7 @@
     "binaryMode": "separate",
     "availableInMCP": false
   },
-  "versionId": "f8677f0d-14aa-409e-b3c1-43f85af001a3",
+  "versionId": "c110b2a4-424b-494d-b85e-c9b0f25ba38e",
   "meta": {
     "instanceId": "508bd08ea0e578cd1d724631f38f106cb4e6ff197483049e7c92500408fcd471"
   },
