@@ -1,0 +1,858 @@
+{
+  "name": "Daily Trade Reconciliation and Exception Management",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "triggerAtDay": [
+                1,
+                2,
+                3,
+                4,
+                5
+              ],
+              "triggerAtHour": 7
+            }
+          ]
+        }
+      },
+      "id": "65150a6b-ebe8-4bd9-8222-d389ae4bb1b0",
+      "name": "Daily Business Day Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.3,
+      "position": [
+        240,
+        592
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "<__PLACEHOLDER_VALUE__SELECT * FROM trades WHERE trade_date = CAST(GETDATE() AS DATE)__>",
+        "options": {}
+      },
+      "id": "f21d3820-3842-4200-b854-3deab030bb55",
+      "name": "Extract SQL Server Trades",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        688,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "recon_key",
+              "value": "={{ $json.trade_id }}_{{ $json.trade_date }}_{{ $json.symbol }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "trade_id",
+              "value": "={{ $json.trade_id }}",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "trade_date",
+              "value": "={{ $json.trade_date }}",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "symbol",
+              "value": "={{ $json.symbol }}",
+              "type": "string"
+            },
+            {
+              "id": "5",
+              "name": "quantity",
+              "value": "={{ Number($json.quantity) }}",
+              "type": "number"
+            },
+            {
+              "id": "6",
+              "name": "price",
+              "value": "={{ Number($json.price) }}",
+              "type": "number"
+            },
+            {
+              "id": "7",
+              "name": "counterparty",
+              "value": "={{ $json.counterparty }}",
+              "type": "string"
+            },
+            {
+              "id": "8",
+              "name": "source",
+              "value": "SQL",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "54c173b9-a4da-4b85-ad5b-24ce0cb22459",
+      "name": "Normalize SQL Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        912,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.trade_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "leftValue": "={{ $json.symbol }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c79e6701-12d2-482a-a109-b111c5f9621f",
+      "name": "Filter Valid SQL Records",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        1136,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "mergeByFields": {
+          "values": [
+            {
+              "field1": "recon_key",
+              "field2": "recon_key"
+            }
+          ]
+        },
+        "options": {
+          "skipFields": "source"
+        }
+      },
+      "id": "fc97ef09-591c-4ef3-aae4-6192b11349d1",
+      "name": "Compare SQL vs Excel",
+      "type": "n8n-nodes-base.compareDatasets",
+      "typeVersion": 2.3,
+      "position": [
+        1360,
+        560
+      ]
+    },
+    {
+      "parameters": {
+        "fileSelector": "<__PLACEHOLDER_VALUE__/data/trades/daily_trades_*.xlsx__>",
+        "options": {}
+      },
+      "id": "56af2f3e-4716-4b2b-80ce-b4ac1c188274",
+      "name": "Read Excel File",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        688
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {
+          "headerRow": true,
+          "includeEmptyCells": false
+        }
+      },
+      "id": "d1e1d8bc-48be-4392-8787-ff5b87a00a71",
+      "name": "Parse Excel Data",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        688,
+        688
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "recon_key",
+              "value": "={{ $json.TradeID }}_{{ $json.TradeDate }}_{{ $json.Symbol }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "trade_id",
+              "value": "={{ $json.TradeID }}",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "trade_date",
+              "value": "={{ $json.TradeDate }}",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "symbol",
+              "value": "={{ $json.Symbol }}",
+              "type": "string"
+            },
+            {
+              "id": "5",
+              "name": "quantity",
+              "value": "={{ Number($json.Quantity) }}",
+              "type": "number"
+            },
+            {
+              "id": "6",
+              "name": "price",
+              "value": "={{ Number($json.Price) }}",
+              "type": "number"
+            },
+            {
+              "id": "7",
+              "name": "counterparty",
+              "value": "={{ $json.Counterparty }}",
+              "type": "string"
+            },
+            {
+              "id": "8",
+              "name": "source",
+              "value": "Excel",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f2cad7aa-7483-4b50-aa4a-6837256f5533",
+      "name": "Normalize Excel Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        912,
+        688
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "and",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.trade_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "leftValue": "={{ $json.symbol }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7a023b1a-f2d9-4e1c-8940-f16225840c33",
+      "name": "Filter Valid Excel Records",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.3,
+      "position": [
+        1136,
+        688
+      ]
+    },
+    {
+      "parameters": {
+        "compare": "selectedFields",
+        "fieldsToCompare": "recon_key",
+        "options": {}
+      },
+      "id": "8e4d2890-b5ab-42de-99a1-6dd1d4bc6d47",
+      "name": "Identify Duplicates",
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 1.1,
+      "position": [
+        1584,
+        592
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1",
+              "name": "exception_type",
+              "value": "={{ $json._merge === \"input1\" ? \"Missing in Excel\" : ($json._merge === \"input2\" ? \"Missing in SQL\" : \"Field Mismatch\") }}",
+              "type": "string"
+            },
+            {
+              "id": "2",
+              "name": "severity",
+              "value": "={{ $json._merge === \"both\" ? \"Low\" : \"High\" }}",
+              "type": "string"
+            },
+            {
+              "id": "3",
+              "name": "recon_key",
+              "value": "={{ $json.recon_key }}",
+              "type": "string"
+            },
+            {
+              "id": "4",
+              "name": "trade_id",
+              "value": "={{ $json.trade_id }}",
+              "type": "string"
+            },
+            {
+              "id": "5",
+              "name": "symbol",
+              "value": "={{ $json.symbol }}",
+              "type": "string"
+            },
+            {
+              "id": "6",
+              "name": "quantity",
+              "value": "={{ $json.quantity }}",
+              "type": "number"
+            },
+            {
+              "id": "7",
+              "name": "price",
+              "value": "={{ $json.price }}",
+              "type": "number"
+            },
+            {
+              "id": "8",
+              "name": "source",
+              "value": "={{ $json.source }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "a4971892-b969-4bbc-9941-4062b40db9d8",
+      "name": "Classify Exceptions",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1808,
+        592
+      ]
+    },
+    {
+      "parameters": {
+        "sortFieldsUi": {
+          "sortField": [
+            {
+              "fieldName": "severity",
+              "order": "descending"
+            },
+            {
+              "fieldName": "recon_key"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3a89541b-a969-422f-b8bf-2738fc8c0bb6",
+      "name": "Sort by Severity",
+      "type": "n8n-nodes-base.sort",
+      "typeVersion": 1,
+      "position": [
+        2032,
+        592
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "xlsx",
+        "options": {
+          "fileName": "=Trade_Exceptions_{{ $now.toFormat(\"yyyy-MM-dd\") }}.xlsx",
+          "headerRow": true,
+          "sheetName": "Exceptions"
+        }
+      },
+      "id": "480c0533-e1f9-4fcf-b819-fb71b6e8f6fe",
+      "name": "Generate Exception Report",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        2480,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ \"/data/reports/Trade_Exceptions_\" + $now.toFormat(\"yyyy-MM-dd\") + \".xlsx\" }}",
+        "options": {}
+      },
+      "id": "75c7d603-b982-403f-8348-b4f571fe4604",
+      "name": "Save Exception Report",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        2704,
+        496
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "id": "d692ea22-6ed1-4f72-b9bf-5060ee0cf28e",
+      "name": "Merge Report and Summary",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2928,
+        736
+      ]
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "exceptions",
+        "options": {}
+      },
+      "id": "89561688-7d15-47c2-a908-d94ffc533ead",
+      "name": "Generate Summary Statistics",
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2256,
+        784
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "jsCode": "const exceptions = $input.first().json.exceptions || [];\nconst totalTrades = exceptions.length;\nconst matched = exceptions.filter(e => e.exception_type === \"Field Mismatch\").length;\nconst unmatched = totalTrades - matched;\nconst highSeverity = exceptions.filter(e => e.severity === \"High\").length;\nconst lowSeverity = exceptions.filter(e => e.severity === \"Low\").length;\n\nreturn [{\n  json: {\n    total_trades: totalTrades,\n    matched_trades: matched,\n    unmatched_trades: unmatched,\n    high_severity_count: highSeverity,\n    low_severity_count: lowSeverity,\n    run_date: new Date().toISOString().split(\"T\")[0]\n  }\n}];"
+      },
+      "id": "5d94be77-972a-4029-a380-1ab2437f5fa7",
+      "name": "Calculate Summary Metrics",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2480,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "<__PLACEHOLDER_VALUE__https://api.powerbi.com/v1.0/myorg/datasets/{dataset-id}/rows?key={api-key}__>",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { \"rows\": [{ \"run_date\": $json.run_date, \"total_trades\": $json.total_trades, \"matched\": $json.matched_trades, \"unmatched\": $json.unmatched_trades, \"high_severity\": $json.high_severity_count }] } }}",
+        "options": {}
+      },
+      "id": "5d491065-233c-4d7d-851e-dd9e27044e32",
+      "name": "Update Power BI Dataset",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        2704,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "fromEmail": "<__PLACEHOLDER_VALUE__reconciliation@company.com__>",
+        "toEmail": "<__PLACEHOLDER_VALUE__operations-team@company.com__>",
+        "subject": "={{ \"Daily Trade Reconciliation - \" + $now.toFormat(\"MMMM d, yyyy\") }}",
+        "html": "={{ \"<h2>Daily Trade Reconciliation Summary</h2>\" +\n\"<p><strong>Run Date:</strong> \" + $(\"Calculate Summary Metrics\").item.json.run_date + \"</p>\" +\n\"<p><strong>Total Trades Reviewed:</strong> \" + $(\"Calculate Summary Metrics\").item.json.total_trades + \"</p>\" +\n\"<p><strong>Matched Trades:</strong> \" + $(\"Calculate Summary Metrics\").item.json.matched_trades + \"</p>\" +\n\"<p><strong>Unmatched Trades:</strong> \" + $(\"Calculate Summary Metrics\").item.json.unmatched_trades + \"</p>\" +\n\"<p><strong>High Severity Exceptions:</strong> \" + $(\"Calculate Summary Metrics\").item.json.high_severity_count + \"</p>\" +\n\"<p><strong>Low Severity Exceptions:</strong> \" + $(\"Calculate Summary Metrics\").item.json.low_severity_count + \"</p>\" +\n\"<p>Please review the attached exception report for details.</p>\" }}",
+        "options": {
+          "fileAttachments": "data"
+        }
+      },
+      "id": "25e84a4b-0005-46e1-a54e-e7ae5b6e78ce",
+      "name": "Send Summary Email",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        3152,
+        736
+      ],
+      "webhookId": "9fa96f7c-32ae-4670-ba79-a42e45e78b7e"
+    },
+    {
+      "parameters": {
+        "table": "reconciliation_logs",
+        "columns": "run_date,status,records_processed,exceptions_found,high_severity_count"
+      },
+      "id": "bbbd9283-f618-427c-93f2-0c498a6dd553",
+      "name": "Log Execution to Database",
+      "type": "n8n-nodes-base.microsoftSql",
+      "typeVersion": 1.1,
+      "position": [
+        3376,
+        688
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "combinator": "or",
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.fileName }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "isEmpty"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c2143505-1b0d-427e-a39c-28336a83c072",
+      "name": "Check for Critical Errors",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        3152,
+        432
+      ],
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "fromEmail": "<__PLACEHOLDER_VALUE__reconciliation@company.com__>",
+        "toEmail": "<__PLACEHOLDER_VALUE__workflow-owner@company.com__>",
+        "subject": "={{ \"CRITICAL: Trade Reconciliation Workflow Failed - \" + $now.toFormat(\"MMMM d, yyyy\") }}",
+        "html": "={{ \"<h2>Trade Reconciliation Workflow Error</h2>\" +\n\"<p><strong>Error Time:</strong> \" + $now.toISO() + \"</p>\" +\n\"<p><strong>Error Details:</strong> Critical error occurred during reconciliation process. File save may have failed.</p>\" +\n\"<p>Please investigate and resolve the issue immediately.</p>\" }}",
+        "options": {}
+      },
+      "id": "a811b17a-d891-436d-8e4f-9375ed25af6a",
+      "name": "Send Error Alert",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 2.1,
+      "position": [
+        3376,
+        400
+      ],
+      "webhookId": "328f7141-8c8b-4e0a-9356-4a80358504d0"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Daily Business Day Schedule": {
+      "main": [
+        [
+          {
+            "node": "Extract SQL Server Trades",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read Excel File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract SQL Server Trades": {
+      "main": [
+        [
+          {
+            "node": "Normalize SQL Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize SQL Data": {
+      "main": [
+        [
+          {
+            "node": "Filter Valid SQL Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Valid SQL Records": {
+      "main": [
+        [
+          {
+            "node": "Compare SQL vs Excel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Compare SQL vs Excel": {
+      "main": [
+        [
+          {
+            "node": "Identify Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Excel File": {
+      "main": [
+        [
+          {
+            "node": "Parse Excel Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Excel Data": {
+      "main": [
+        [
+          {
+            "node": "Normalize Excel Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Excel Data": {
+      "main": [
+        [
+          {
+            "node": "Filter Valid Excel Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Valid Excel Records": {
+      "main": [
+        [
+          {
+            "node": "Compare SQL vs Excel",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Identify Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Classify Exceptions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Classify Exceptions": {
+      "main": [
+        [
+          {
+            "node": "Sort by Severity",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Sort by Severity": {
+      "main": [
+        [
+          {
+            "node": "Generate Exception Report",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Generate Summary Statistics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Exception Report": {
+      "main": [
+        [
+          {
+            "node": "Save Exception Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Exception Report": {
+      "main": [
+        [
+          {
+            "node": "Merge Report and Summary",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Check for Critical Errors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Report and Summary": {
+      "main": [
+        [
+          {
+            "node": "Send Summary Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Summary Statistics": {
+      "main": [
+        [
+          {
+            "node": "Calculate Summary Metrics",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Calculate Summary Metrics": {
+      "main": [
+        [
+          {
+            "node": "Update Power BI Dataset",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Power BI Dataset": {
+      "main": [
+        [
+          {
+            "node": "Merge Report and Summary",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Send Summary Email": {
+      "main": [
+        [
+          {
+            "node": "Log Execution to Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check for Critical Errors": {
+      "main": [
+        [
+          {
+            "node": "Send Error Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Execution to Database",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "f8677f0d-14aa-409e-b3c1-43f85af001a3",
+  "meta": {
+    "instanceId": "508bd08ea0e578cd1d724631f38f106cb4e6ff197483049e7c92500408fcd471"
+  },
+  "nodeGroups": [],
+  "id": "RF1cgMpmDg8W91yP",
+  "tags": []
+}
